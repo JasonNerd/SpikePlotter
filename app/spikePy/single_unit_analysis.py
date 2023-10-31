@@ -19,7 +19,7 @@ Metrics analysis
     lv
 
 """
-from typing import List
+from typing import List, Tuple
 import numpy as np
 import warnings
 
@@ -56,7 +56,7 @@ def time_histogram(spike_train, t_stop, bin_size,
 
     Returns
     ------
-    tuple(np.ndarray, np.ndarray)
+    Tuple(np.ndarray, np.ndarray)
         the binned count histogram and the bin time array of given spike-train.
 
     See Also
@@ -75,9 +75,7 @@ def time_histogram(spike_train, t_stop, bin_size,
         (array([0.1, 0.3, 0. , 0. , 0.2]), array([ 0,  2,  4,  6,  8, 10]))
     """
     # transfer to 1D array
-    if isinstance(spike_train, list):
-        spike_train = np.array(spike_train)
-    spike_train = spike_train.flatten()
+    spike_train = to1dArray(spike_train)
     # calculate the hist
     duration = t_stop - t_start
     if duration / bin_size != int(duration / bin_size):
@@ -98,7 +96,52 @@ def time_histogram(spike_train, t_stop, bin_size,
     return bin_hist, bin_arr
 
 
+def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args, **kwargs):
+    """
+    Return an array containing the inter-spike intervals of given spike train.
+
+    Note
+    ------
+    1. the timestamp in spike_train should be sorted ascend, otherwise negative value may occur
+
+    Parameters
+    ------
+    spike_train: np.ndarray or List[float]
+        The spike timestamps of a neuron
+    min_width: float
+        minumum width of the interval, default value is 0
+    max_width: float
+        maximum width of the interval, default value is np.inf
+
+    Returns
+    ------
+    np.ndarray
+        the inter-spike intervals of given spike train.
+
+    Examples
+    ------
+    >>> sp = [0.1, 3.2, 3.37, 3.92, 8.2, 9.6]
+    >>> inter_spike_interval_gram(sp)
+        [3.1 0.17 0.55 4.28 1.4]
+    """
+    spike_train = to1dArray(spike_train)
+    intervals = np.diff(spike_train)
+    if (intervals < 0).any():
+        warnings.warn("ISI evaluated to negative values. "
+                      "Please sort the input array.")
+    return intervals[(min_width < intervals) & (intervals < max_width)]
+
+
+def to1dArray(spike_train):
+    if isinstance(spike_train, list):
+        spike_train = np.array(spike_train)
+    spike_train = spike_train.flatten()
+    return spike_train
+
+
 if __name__ == '__main__':
     sp = [0.1, 3.2, 3.37, 3.92, 8.2, 9.6]
-    print(time_histogram(sp, 10, 2, output='rate'))
+    print(inter_spike_interval_gram(sp, min_width=1, max_width=8))
+
+
 

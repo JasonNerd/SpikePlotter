@@ -22,14 +22,15 @@ Metrics analysis
 from typing import List, Tuple
 import numpy as np
 import warnings
+import spikePy.conversion.spike_train_conv as sc
 
 __all__ = [
     "time_histogram",
 ]
 
 
-def time_histogram(spike_train, t_stop, bin_size,
-                   t_start=0, output='counts', *args, **kwargs):
+def time_histogram(spike_train, bin_size, t_start=None, t_stop=None,
+                   output='counts', *args, **kwargs):
     """
     Calculate the binned version of given spike-train.
 
@@ -41,13 +42,13 @@ def time_histogram(spike_train, t_stop, bin_size,
     Parameters
     ------
     spike_train: np.ndarray or List[float]
-        The spike timestamps of a neuron
+        The spike timestamps of a neuron.
     t_start: float
-        The timestamp beginning the record.
+        The record beginning timestamp.
     t_stop: float
-        The timestamp finishing the record.
+        The record finishing timestamp.
     bin_size: float
-        the width of histogram bins
+        the width of histogram bins.
     output : {'counts', 'binary', 'rate'} optional
         Normalization of the histogram. Can be one of:
         *  'counts': spike counts at each bin.
@@ -75,7 +76,11 @@ def time_histogram(spike_train, t_stop, bin_size,
         (array([0.1, 0.3, 0. , 0. , 0.2]), array([ 0,  2,  4,  6,  8, 10]))
     """
     # transfer to 1D array
-    spike_train = to1dArray(spike_train)
+    spike_train = sc.to1dArray(spike_train)
+    if not t_start:
+        t_start = 0
+    if not t_stop:
+        t_stop = spike_train[-1]
     # calculate the hist
     duration = t_stop - t_start
     if duration / bin_size != int(duration / bin_size):
@@ -104,6 +109,10 @@ def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args
     ------
     1. the timestamp in spike_train should be sorted ascend, otherwise negative value may occur
 
+    See Also
+    ------
+    spikePy.plot.plot_isi()
+
     Parameters
     ------
     spike_train: np.ndarray or List[float]
@@ -115,8 +124,8 @@ def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args
 
     Returns
     ------
-    np.ndarray
-        the inter-spike intervals of given spike train.
+    np.ndarray or Tuple(np.ndarray, np.ndarray)
+        the inter-spike intervals of given spike train or its binned version.
 
     Examples
     ------
@@ -124,19 +133,9 @@ def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args
     >>> inter_spike_interval_gram(sp)
         [3.1 0.17 0.55 4.28 1.4]
     """
-    spike_train = to1dArray(spike_train)
-    intervals = np.diff(spike_train)
-    if (intervals < 0).any():
-        warnings.warn("ISI evaluated to negative values. "
-                      "Please sort the input array.")
+    spike_train = sc.to1dArray(spike_train)
+    intervals = sc.detectIfSorted(spike_train)
     return intervals[(min_width < intervals) & (intervals < max_width)]
-
-
-def to1dArray(spike_train):
-    if isinstance(spike_train, list):
-        spike_train = np.array(spike_train)
-    spike_train = spike_train.flatten()
-    return spike_train
 
 
 if __name__ == '__main__':

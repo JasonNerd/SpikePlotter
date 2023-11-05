@@ -26,6 +26,8 @@ import spikePy.conversion.spike_train_conv as sc
 
 __all__ = [
     "time_histogram",
+    "inter_spike_interval_gram",
+
 ]
 
 
@@ -49,7 +51,7 @@ def time_histogram(spike_train, bin_size, t_start=None, t_stop=None,
         The record finishing timestamp.
     bin_size: float
         the width of histogram bins.
-    output : {'counts', 'binary', 'rate'} optional
+    output: {'counts', 'binary', 'rate'} optional
         Normalization of the histogram. Can be one of:
         *  'counts': spike counts at each bin.
         *  'binary': binary spike counts(when >0, view as 1) at each bin.
@@ -58,11 +60,14 @@ def time_histogram(spike_train, bin_size, t_start=None, t_stop=None,
     Returns
     ------
     Tuple(np.ndarray, np.ndarray)
-        the binned count histogram and the bin time array of given spike-train.
+        hist:
+            The values of the histogram.
+        bin_edges: np.ndarray
+            The bin edges ``(length(hist)+1)``.
 
     See Also
     ------
-    spikePy.plot.plot_th()
+    spikePy.plot.sua.plot_th()
 
     Examples
     ------
@@ -89,16 +94,16 @@ def time_histogram(spike_train, bin_size, t_start=None, t_stop=None,
                       f"and this is not an integer.")
     bin_arr = np.arange(t_start, t_stop, bin_size)
     bin_arr = np.append(bin_arr, t_stop)
-    bin_hist, bin_arr = np.histogram(spike_train, bin_arr)
+    hist, bin_edges = np.histogram(spike_train, bin_arr)
     if output == 'counts':
         pass
     elif output == 'rate':
-        bin_hist = bin_hist / duration
+        hist = hist / duration
     elif output == 'binary':
-        bin_hist = np.where(bin_hist > 0, 1, 0)
+        hist = np.where(hist > 0, 1, 0)
     else:
         raise ValueError(f'Parameter output ({output}) is not valid.')
-    return bin_hist, bin_arr
+    return hist, bin_edges
 
 
 def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args, **kwargs):
@@ -111,7 +116,7 @@ def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args
 
     See Also
     ------
-    spikePy.plot.plot_isi()
+    spikePy.plot.sua.plot_isi()
 
     Parameters
     ------
@@ -124,8 +129,8 @@ def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args
 
     Returns
     ------
-    np.ndarray or Tuple(np.ndarray, np.ndarray)
-        the inter-spike intervals of given spike train or its binned version.
+    np.ndarray
+        the inter-spike intervals of given spike train.
 
     Examples
     ------
@@ -136,6 +141,28 @@ def inter_spike_interval_gram(spike_train, min_width=0., max_width=np.inf, *args
     spike_train = sc.to1dArray(spike_train)
     intervals = sc.detectIfSorted(spike_train)
     return intervals[(min_width < intervals) & (intervals < max_width)]
+
+
+def raster_gram(spike_train, *args, **kwargs):
+    """
+    Mark that raster can be a direct way to preview the spike-train
+
+    Parameters
+    ------
+    spike_train: np.ndarray or List[float]
+        The spike timestamps of a neuron.
+
+    Returns
+    ------
+    np.ndarray
+        just the original spike-train.
+
+    See Also
+    ------
+    spikePy.plot.plot_raster()
+    """
+    spike_train = sc.to1dArray(spike_train)
+    return spike_train
 
 
 if __name__ == '__main__':

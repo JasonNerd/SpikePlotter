@@ -23,19 +23,20 @@ import warnings
 import spikePy.single_unit_analysis as sua
 
 __all__ = [
-    "split_epochs",
+    "peri_stimulus_raster_gram",
     "peri_stimulus_time_histogram",
 ]
 
 from spikePy.conversion.spike_train_conv import to1dArray
 
 
-def split_epochs(spike_train, event_train, bias_start, bias_stop, bin_size,
-                 t_start=None, t_stop=None, *args, **kwargs):
+def peri_stimulus_raster_gram(spike_train, event_train, bias_start, bias_stop, bin_size,
+                              t_start=None, t_stop=None, *args, **kwargs):
     """
     Split the spike_train using given event(stimulus/mark/flag) time series, and return
     the split epochs and corresponding event bins. Epochs[i] is the spike_train timestamps
-    around event_train[i], that is [event_train[i]-bias_start, event_train[i]+bias_stop)
+    around event_train[i], that is [event_train[i]-bias_start, event_train[i]+bias_stop).
+    The epochs can be viewed as rasters(peri-event)
 
     See Also
     ------
@@ -61,9 +62,10 @@ def split_epochs(spike_train, event_train, bias_start, bias_stop, bin_size,
     Returns
     ------
     Tuple(np.ndarray, np.ndarray)
-        The split epochs and corresponding event bins. if size of event-train is `m`, and
-        each epoch size is `n`, `n = (bias_stop+bias_start)/bin_size`. Then epochs.shape=(m, n)
-        and the event-bins shape is (m,)
+        epochs: np.ndarray
+            All spike bins around the given stimulus in event train
+        bin_edges: np.ndarray
+            Time bins of ``(length(epochs[0])+1)``.
 
     Examples
     ------
@@ -73,12 +75,12 @@ def split_epochs(spike_train, event_train, bias_start, bias_stop, bin_size,
     ...                         7.32, 7.9, 8.5, 8.62, 9.23, 9.46])
     >>> event_train = np.array([1.5, 4.2, 6.8, 8.4])
     >>> bias_start, bias_stop = 0.5, 1.5
-    >>> split_to_epochs(spike_train, event_train, bias_start,
+    >>> peri_stimulus_raster_gram(spike_train, event_train, bias_start,
     ...                 bias_stop, bin_size, t_stop=t_stop)
         (array([[1, 0, 1, 1],
-           [1, 1, 0, 0],
-           [2, 1, 1, 0],
-           [0, 2, 2, 0]], dtype=int64), array([ 3,  8, 14, 17]))
+               [1, 1, 0, 0],
+               [2, 1, 1, 0],
+               [0, 2, 2, 0]], dtype=int64), array([-1,  0,  1,  2,  3]))
     """
     # Bin the spike-train
     spike_train = to1dArray(spike_train)
@@ -102,12 +104,71 @@ def split_epochs(spike_train, event_train, bias_start, bias_stop, bin_size,
         tmp_list.append(binned_spike_train[e - bias_start_bin: e + bias_stop_bin])
     epochs = np.stack(tmp_list, axis=1)
     epochs = epochs.T
-    return epochs, event_train_bins
+    return epochs, (np.array(list(range(epochs.shape[1] + 1))) - bias_start_bin)*bin_size
 
 
-def peri_stimulus_time_histogram():
-    pass
+def peri_stimulus_time_histogram(spike_train, event_train, bias_start, bias_stop, bin_size,
+                                 output='counts', t_start=None, t_stop=None, *args, **kwargs):
+    """
+    Split the spike_train using given event(stimulus/mark/flag) time series, and return
+    the split epochs and corresponding event bins. Epochs[i] is the spike_train timestamps
+    around event_train[i], that is [event_train[i]-bias_start, event_train[i]+bias_stop).
+    The epochs can be viewed as rasters(peri-event)
 
+    See Also
+    ------
+    spikePy.event_relate_analysis.peri_stimulus_raster_gram
+    spikePy.plot.plot_psth
 
-if __name__ == '__main__':
-    pass
+    Parameters
+    ------
+    spike_train: np.ndarray or List[float]
+        The spike timestamps of a neuron
+    event_train: np.ndarray or List[float]
+        The stimulus time sequence
+    output : {'counts', 'rate'} optional
+        Normalization of the histogram. Can be one of:
+        *  'counts': spike counts at each bin.
+        *  'rate': mean spike rate per spike-train.
+    bias_start: float
+        The timestamp beginning the record.
+    bias_stop: float
+        The timestamp finishing the record.
+    bin_size: float
+        the width bins
+    t_start: float
+        The record beginning timestamp.
+    t_stop: float
+        The record finishing timestamp.
+
+    Returns
+    ------
+    Tuple(np.ndarray, np.ndarray)
+        hist:
+            The values of the histogram.
+        bin_edges: np.ndarray
+            The bin edges ``(length(hist)+1)``.
+
+    Examples
+    ------
+    >>> t_start, t_stop, bin_size = 0, 10, 0.5
+    >>> spike_train = np.array([0.3, 0.6, 1.4, 2.2, 2.7, 3.6,
+    ...                         4.3, 5.7, 6.3, 6.4, 6.8, 6.92,
+    ...                         7.32, 7.9, 8.5, 8.62, 9.23, 9.46])
+    >>> event_train = np.array([1.5, 4.2, 6.8, 8.4])
+    >>> bias_start, bias_stop = 0.5, 1.5
+    >>> peri_stimulus_raster_gram(spike_train, event_train, bias_start,
+    ...                 bias_stop, bin_size, t_stop=t_stop)
+        [4 4 4 1]
+    """
+    duration = bias_start + bias_stop
+    psrg, bin_edges = peri_stimulus_raster_gram(spike_train, event_train, bias_start, bias_stop,
+                                                bin_size, t_start, t_stop)
+    bin_hist = np.sum(psrg, axis=0)
+    if output == 'counts':
+        pass
+    elif output == 'rate':
+        bin_hist = bin_hist / duration
+    else:
+        raise ValueError(f'Parameter output ({output}) is not valid.')
+    return bin_hist, bin_edges

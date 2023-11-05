@@ -16,10 +16,10 @@ def to1dArray(spike_train):
     np.ndarray
         the 1-D spike time sequence form of given spike-train.
     """
-    if spike_train.size == 0:
-        raise ValueError("Empty input.")
     if isinstance(spike_train, list):
         spike_train = np.array(spike_train)
+    if spike_train.size == 0:
+        raise ValueError("Empty input.")
     spike_train = spike_train.flatten()
     return spike_train
 

@@ -110,7 +110,7 @@ def plot_isi(intervals, bin_size=0.003, axes=None, form='bar', color='#646464',
     >>> plt.show()
     """
     t_start = np.floor(intervals.min())
-    t_stop = np.ceil(intervals.max())
+    t_stop = np.ceil(intervals.max()) 
     hist, bin_edges = time_histogram(intervals, bin_size, t_start, t_stop)
     return plot_th(hist, bin_edges, axes, form, color, xlabel, ylabel, title)
 
